@@ -1,22 +1,22 @@
-#!/usr/bin/python2.7
+#!/usr/bin/env python3
 import struct
 from Crypto.Cipher import AES
 
 QUAD = struct.Struct('>Q')
 
 def aes_unwrap_key_and_iv(kek, wrapped):
-    n = len(wrapped)/8 - 1
+    n = len(wrapped) // 8 - 1
     #NOTE: R[0] is never accessed, left in for consistency with RFC indices
-    R = [None]+[wrapped[i*8:i*8+8] for i in range(1, n+1)]
+    R = [None] + [wrapped[i*8:i*8+8] for i in range(1, n+1)]
     A = QUAD.unpack(wrapped[:8])[0]
-    decrypt = AES.new(kek).decrypt
+    decrypt = AES.new(kek, AES.MODE_ECB).decrypt
     for j in range(5,-1,-1): #counting down
         for i in range(n, 0, -1): #(n, n-1, ..., 1)
             ciphertext = QUAD.pack(A^(n*j+i)) + R[i]
             B = decrypt(ciphertext)
             A = QUAD.unpack(B[:8])[0]
             R[i] = B[8:]
-    return "".join(R[1:]), A
+    return b"".join(R[1:]), A
 
 #key wrapping as defined in RFC 3394
 #http://www.ietf.org/rfc/rfc3394.txt
@@ -25,8 +25,8 @@ def aes_unwrap_key_and_iv(kek, wrapped):
 def aes_unwrap_key(kek, wrapped, iv=100085249058027875):
     key, key_iv = aes_unwrap_key_and_iv(kek, wrapped)
     if key_iv != iv:
-        raise ValueError("Integrity Check Failed: "+hex(key_iv)+" (expected "+hex(iv)+")")
-    print key
+        raise ValueError("Integrity Check Failed: " + hex(key_iv) + " (expected " + hex(iv) + ")")
+    print(key)
     #print key_iv
     return key
 
@@ -46,22 +46,22 @@ def aes_unwrap_key_withpad(kek, wrapped):
     return key[:key_len]
 
 def aes_wrap_key(kek, plaintext, iv=0xa6a6a6a6a6a6a6a6):
-    n = len(plaintext)/8
-    R = [None]+[plaintext[i*8:i*8+8] for i in range(0, n)]
+    n = len(plaintext) // 8
+    R = [None] + [plaintext[i*8:i*8+8] for i in range(0, n)]
     A = iv
-    encrypt = AES.new(kek).encrypt
+    encrypt = AES.new(kek, AES.MODE_ECB).encrypt
     for j in range(6):
         for i in range(1, n+1):
             B = encrypt(QUAD.pack(A) + R[i])
             A = QUAD.unpack(B[:8])[0] ^ (n*j + i)
             R[i] = B[8:]
-    return QUAD.pack(A) + "".join(R[1:])
+    return QUAD.pack(A) + b"".join(R[1:])
 
 def aes_wrap_key_withpad(kek, plaintext):
     iv = 0xA65959A600000000 + len(plaintext)
-    plaintext = plaintext + "\0" * ((8 - len(plaintext)) % 8)
+    plaintext = plaintext + b"\0" * ((8 - len(plaintext)) % 8)
     if len(plaintext) == 8:
-        return AES.new(kek).encrypt(QUAD.pack[iv] + plaintext)
+        return AES.new(kek, AES.MODE_ECB).encrypt(QUAD.pack(iv) + plaintext)
     return aes_wrap_key(kek, plaintext, iv)
 
 def test():
@@ -73,8 +73,8 @@ def test():
     array_kek = [ 29, 3, 245, 130, 135, 152, 43, 199, 1, 34, 115, 148, 228, 152, 222, 35 ]
     #print ''.join('{:02x}'.format(x) for x in array_kek)
     #print binascii.hexlify(KEK)
-    print "Input PSK: "
-    user_input = sys.stdin.readline().translate(None, '+')
+    print("Input PSK: ")
+    user_input = sys.stdin.readline().translate({ord('+'): None})
     CIPHER = binascii.unhexlify(user_input.strip())
     #CIPHER = binascii.unhexlify("9539C9564FB73887D8CCA21F7B29FD3FE60E471D80C9B371")
     #CIPHER = binascii.unhexlify("0E611DC31F2AEBB4A6E69F2641E1E83D762F514F3636E1EFA86B9BDECFEFADFB")
@@ -84,4 +84,5 @@ def test():
     binascii.hexlify(aes_unwrap_key(KEK, CIPHER))
     #assert aes_wrap_key(KEK, PLAIN) == CIPHER
 
-test()
+if __name__ == '__main__':
+    test()
