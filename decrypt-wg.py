@@ -64,7 +64,7 @@ def aes_wrap_key_withpad(kek, plaintext):
         return AES.new(kek, AES.MODE_ECB).encrypt(QUAD.pack(iv) + plaintext)
     return aes_wrap_key(kek, plaintext, iv)
 
-def test():
+def test(psk_input=None):
     #test vector from RFC 3394
     import binascii
     import sys
@@ -73,8 +73,10 @@ def test():
     array_kek = [ 29, 3, 245, 130, 135, 152, 43, 199, 1, 34, 115, 148, 228, 152, 222, 35 ]
     #print ''.join('{:02x}'.format(x) for x in array_kek)
     #print binascii.hexlify(KEK)
-    print("Input PSK: ")
-    user_input = sys.stdin.readline().translate({ord('+'): None})
+    if psk_input is None:
+        print("Input PSK: ")
+        psk_input = sys.stdin.readline()
+    user_input = psk_input.translate({ord('+'): None})
     CIPHER = binascii.unhexlify(user_input.strip())
     #CIPHER = binascii.unhexlify("9539C9564FB73887D8CCA21F7B29FD3FE60E471D80C9B371")
     #CIPHER = binascii.unhexlify("0E611DC31F2AEBB4A6E69F2641E1E83D762F514F3636E1EFA86B9BDECFEFADFB")
@@ -85,4 +87,6 @@ def test():
     #assert aes_wrap_key(KEK, PLAIN) == CIPHER
 
 if __name__ == '__main__':
-    test()
+    import sys
+    arg = sys.argv[1] if len(sys.argv) > 1 else None
+    test(arg)
